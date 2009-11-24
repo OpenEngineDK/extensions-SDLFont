@@ -25,6 +25,7 @@
 #include <boost/serialization/export.hpp>
 #include <boost/serialization/split_member.hpp>
 #include <boost/serialization/weak_ptr.hpp>
+#include <boost/serialization/extended_type_info.hpp>
 
 //@todo make a SDL_ttf in Meta to suppot different platforms
 #include <SDL_ttf.h>
