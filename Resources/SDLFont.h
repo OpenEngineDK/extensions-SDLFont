@@ -55,11 +55,13 @@ private:
         unsigned int height;        //!< texture height
         unsigned int depth;         //!< texture depth/bits
         string text;                //!< font text
+        bool fixed_size;
         boost::weak_ptr<SDLFontTexture> weak_this;
         void FireChangedEvent();
         friend class SDLFont;
     public:
         SDLFontTexture(SDLFontPtr font);
+        SDLFontTexture(SDLFontPtr font, int fixed_width, int fixed_height);
         virtual ~SDLFontTexture();
         
         void Handle(FontChangedEventArg arg);
@@ -111,6 +113,7 @@ public:
 
     // font resource methods
     IFontTextureResourcePtr CreateFontTexture();
+    IFontTextureResourcePtr CreateFontTexture(int fixed_width, int fixed_height);
     void Render(SDLFontTexture* tex);
     void SetPointSize(int ptsize);
     int GetPointSize();

@@ -138,18 +138,22 @@ void SDLFont::Unload() {
  **/
 void SDLFont::Render(SDLFontTexture* tex) {
    if (!font) throw Exception("Error rendering FontTexture: Font not loaded.");
-   if (tex->data) delete[] tex->data;
+
    if (tex->text.empty()) {
-       // create texture of one pixel with all-zero values.       
-       //@todo this is kind of hackish ... what to do?
-       tex->data = new unsigned char[4];
-       *((int*)tex->data) = 0;
-       tex->width = 1;
-       tex->height = 1;
-       tex->depth = 32;
-       tex->FireChangedEvent();
-       return;
+       if (!tex->fixed_size) {
+           if (tex->data) delete[] tex->data;
+           // create texture of one pixel with all-zero values.       
+           //@todo this is kind of hackish ... what to do?
+           tex->data = new unsigned char[4];
+           *((int*)tex->data) = 0;
+           tex->width = 1;
+           tex->height = 1;
+           tex->depth = 32;
+           tex->FireChangedEvent();
+           return;
+       }
    }
+
    TTF_SetFontStyle(font, style);
    SDL_Surface* surf = TTF_RenderText_Blended(font, tex->text.c_str(), sdlcolr);
    if (!surf) 
@@ -157,6 +161,7 @@ void SDLFont::Render(SDLFontTexture* tex) {
    tex->depth = surf->format->BitsPerPixel;
    if (tex->depth != 32) 
        throw ResourceException("Unsupported font surface.");
+
    // convert to rgba colors 
    //@todo conversion not needed when color is white. This is often
    //the case when we render white text and use opengl to set color.
@@ -178,27 +183,31 @@ void SDLFont::Render(SDLFontTexture* tex) {
    SDL_Surface* converted = SDL_ConvertSurface(surf, &format, SDL_SWSURFACE);
    if (converted == NULL)
        throw ResourceException("Error converting SDL_ttf surface");
-   tex->width  = surf->w;
-   tex->height = surf->h;    
-   unsigned long size = (tex->depth/8) * tex->width * tex->height;
-   tex->data = new unsigned char[size];
-   SDL_LockSurface(converted);
-   memcpy(tex->data, converted->pixels, size);
-   SDL_UnlockSurface(converted);
-   SDL_FreeSurface(converted);
-   // for (unsigned int i = 0; i < size; i++) {
-   //     int r = data[i++];
-   //     int g = data[i++];
-   //     int b = data[i++];
-   //     int a = data[i];
-   //     logger.info << "(" << r << "," << g << "," << b  << "," << a << ")" << logger.end;
-   // }
-   SDL_FreeSurface(surf);
+   if (tex->fixed_size) {
+       memset(tex->data, 0, tex->depth/8 * tex->width * tex->height);
+       unsigned int size = (tex->depth/8) * fmin(tex->width, surf->w) * fmin(tex->height, surf->h);
+       SDL_LockSurface(converted);
+       memcpy(tex->data, converted->pixels, size);
+       SDL_UnlockSurface(converted);
+       SDL_FreeSurface(converted);
+       SDL_FreeSurface(surf);
+   }
+   else {
+       tex->width  = surf->w;
+       tex->height = surf->h;
+       unsigned long size = (tex->depth/8) * tex->width * tex->height;
+       tex->data = new unsigned char[size];
+       SDL_LockSurface(converted);
+       memcpy(tex->data, converted->pixels, size);
+       SDL_UnlockSurface(converted);
+       SDL_FreeSurface(converted);
+       SDL_FreeSurface(surf);
+   }
    tex->FireChangedEvent();
 }
 
 /**
- * Create a new SDLFontTexture. The texture will be bound to this
+ * Create a new SDLFontTexture of dynamic size. The texture will be bound to this
  * SDLFont and will be re-rendered by the SDLFont each time either the
  * text of the FontTexture changes or the SDLFont is updated.
  * 
@@ -208,6 +217,23 @@ IFontTextureResourcePtr SDLFont::CreateFontTexture() {
     if (!font) 
         throw Exception("Font not loaded");
     SDLFontTexture* tex = new SDLFontTexture(SDLFontPtr(weak_this));
+    SDLFontTexturePtr ptr(tex);
+    tex->weak_this = ptr;
+    Render(tex);
+    return ptr;
+}
+
+/**
+ * Create a new SDLFontTexture of fixed size. The texture will be bound to this
+ * SDLFont and will be re-rendered by the SDLFont each time either the
+ * text of the FontTexture changes or the SDLFont is updated.
+ * 
+ * @return a smart pointer to the new SDLFontTexture.
+ **/
+IFontTextureResourcePtr SDLFont::CreateFontTexture(int fixed_width, int fixed_height) {
+    if (!font) 
+        throw Exception("Font not loaded");
+    SDLFontTexture* tex = new SDLFontTexture(SDLFontPtr(weak_this), fixed_width, fixed_height);
     SDLFontTexturePtr ptr(tex);
     tex->weak_this = ptr;
     Render(tex);
@@ -292,8 +318,21 @@ SDLFont::SDLFontTexture::SDLFontTexture(SDLFontPtr font)
     : font(font)
     , id(0)
     , data(NULL) 
+    , fixed_size(false)
 {
     font->ChangedEvent().Attach(*this);
+}
+
+SDLFont::SDLFontTexture::SDLFontTexture(SDLFontPtr font, int fixed_width, int fixed_height)
+    : font(font)
+    , id(0)
+    , data(NULL) 
+    , fixed_size(true)
+{
+    font->ChangedEvent().Attach(*this);
+    width = fixed_width;
+    height = fixed_height;
+    data = new unsigned char[4 * width * height];
 }
 
 SDLFont::SDLFontTexture::~SDLFontTexture() {
