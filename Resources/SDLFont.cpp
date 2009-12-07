@@ -15,7 +15,7 @@
 #include <Resources/IFontTextureResource.h>
 #include <Resources/ITextureResource.h>
 
-// #include <Logging/Logger.h>
+#include <Logging/Logger.h>
 
 namespace OpenEngine {
 namespace Resources {
@@ -137,39 +137,7 @@ void SDLFont::Unload() {
  * @param tex the SDLFontTexture that should be rendered.
  **/
 void SDLFont::Render(SDLFontTexture* tex) {
-   if (!font) throw Exception("Error rendering FontTexture: Font not loaded.");
-
-   if (tex->text.empty()) {
-       if (!tex->fixed_size) {
-           if (tex->data) delete[] tex->data;
-           // create texture of one pixel with all-zero values.       
-           //@todo this is kind of hackish ... what to do?
-           tex->data = new unsigned char[4];
-           *((int*)tex->data) = 0;
-           tex->width = 1;
-           tex->height = 1;
-           tex->depth = 32;
-           tex->FireChangedEvent();
-           return;
-       }
-       else {
-           memset(tex->data, 0, tex->depth/8 * tex->width * tex->height);
-           tex->FireChangedEvent();
-           return; 
-       }
-   }
-
-   TTF_SetFontStyle(font, style);
-   SDL_Surface* surf = TTF_RenderText_Blended(font, tex->text.c_str(), sdlcolr);
-   if (!surf) 
-       throw ResourceException("Error rendering font");
-   tex->depth = surf->format->BitsPerPixel;
-   if (tex->depth != 32) 
-       throw ResourceException("Unsupported font surface.");
-
-   // convert to rgba colors 
-   //@todo conversion not needed when color is white. This is often
-   //the case when we render white text and use opengl to set color.
+   if (!font) throw Exception("SDLFont: Font not loaded.");
    SDL_PixelFormat format;
    format.palette = 0; format.colorkey = 0; format.alpha = 0;
    format.BitsPerPixel = 32; format.BytesPerPixel = 4;
@@ -185,33 +153,73 @@ void SDLFont::Render(SDLFontTexture* tex) {
    format.Amask = 0xFF000000; format.Ashift = 0; format.Aloss = 0;
 #endif
 
+   SDL_Surface* dest = NULL;
+   if (tex->fixed_size) {
+       dest = SDL_CreateRGBSurfaceFrom(tex->data, 
+                                       tex->width, 
+                                       tex->height, 
+                                       tex->depth, 
+                                       tex->depth/8 * tex->width, 
+                                       format.Rmask, 
+                                       format.Gmask, 
+                                       format.Bmask, 
+                                       format.Amask);
+       Vector<4,float> bgcolr = tex->bgcolr;
+       Uint8 r = int(roundf(bgcolr[0] * 255));
+       Uint8 g = int(roundf(bgcolr[1] * 255));
+       Uint8 b = int(roundf(bgcolr[2] * 255));
+       Uint8 a = int(roundf(bgcolr[3] * 255));
+       Uint32 c = 0;//SDL_MapRGBA(&format, r, g, b, a);
+       // weird hack (maybe sdl_maprgba does not work?)
+       c |= r << 24;
+       c |= g << 16;
+       c |= b << 8;
+       c |= a << 0;
+       SDL_FillRect(dest, NULL, c);
+   }       
+
+   if (tex->text.empty()) {
+       if (!tex->fixed_size) {
+           if (tex->data) delete[] tex->data;
+           // create texture of one pixel with all-zero values.       
+           //@todo this is kind of hackish ... what to do?
+           tex->data = new unsigned char[4];
+           *((int*)tex->data) = 0;
+           tex->width = 1;
+           tex->height = 1;
+           tex->depth = 32;
+           tex->FireChangedEvent();
+           return;
+       }
+       else {
+           SDL_FreeSurface(dest);
+           tex->FireChangedEvent();
+           return; 
+       }
+   }
+
+   TTF_SetFontStyle(font, style);
+   SDL_Surface* surf = TTF_RenderText_Blended(font, tex->text.c_str(), sdlcolr);
+   if (!surf) 
+       throw ResourceException("SDLFont: Error rendering font");
+   tex->depth = surf->format->BitsPerPixel;
+   if (tex->depth != 32) 
+       throw ResourceException("SDLFont: Unsupported font surface.");
+
+   // convert to rgba colors 
+   //@todo conversion not needed when color is white. This is often
+   //the case when we render white text and use opengl to set color.
    SDL_Surface* converted = SDL_ConvertSurface(surf, &format, SDL_SWSURFACE);
    if (converted == NULL)
-       throw ResourceException("Error converting SDL_ttf surface");
+       throw ResourceException("SDLFont: Error converting SDL_ttf surface");
+   
    if (tex->fixed_size) {
-       memset(tex->data, 0, tex->depth/8 * tex->width * tex->height);
-       SDL_Rect srcrect, destrect;
-       srcrect.x = 0;
-       srcrect.y = 0;
-       srcrect.w = surf->w;
-       srcrect.h = surf->h;
-
-       destrect.x = 0;
-       destrect.y = 0;
-       destrect.w = tex->width;
-       destrect.h = tex->height;
-       SDL_Surface* dest = SDL_CreateRGBSurfaceFrom(tex->data, 
-                                                    tex->width, 
-                                                    tex->height, 
-                                                    tex->depth, 
-                                                    tex->depth/8 * tex->width, 
-                                                    format.Rmask, 
-                                                    format.Gmask, 
-                                                    format.Bmask, 
-                                                    format.Amask);
-       SDL_SetAlpha(converted, 0, 0);
-       if (SDL_BlitSurface(converted, &srcrect, dest, &destrect) != 0)
-       throw ResourceException("Error blitting surface.");
+       // weird blending stuff ?????
+       if (tex->bgcolr[3] == 0.0f) SDL_SetAlpha(converted, 0, 0);
+       else SDL_SetAlpha(converted, SDL_SRCALPHA, 255);
+       if (SDL_BlitSurface(converted, &converted->clip_rect, dest, &dest->clip_rect) != 0)
+           throw ResourceException("SDLFont: Error blitting surface.");
+       SDL_FreeSurface(dest);
    }
    else {
        tex->width  = surf->w;
@@ -221,9 +229,9 @@ void SDLFont::Render(SDLFontTexture* tex) {
        SDL_LockSurface(converted);
        memcpy(tex->data, converted->pixels, size);
        SDL_UnlockSurface(converted);
-       SDL_FreeSurface(converted);
-       SDL_FreeSurface(surf);
    }
+   SDL_FreeSurface(converted);
+   SDL_FreeSurface(surf);
    tex->FireChangedEvent();
 }
 
@@ -236,7 +244,7 @@ void SDLFont::Render(SDLFontTexture* tex) {
  **/
 IFontTextureResourcePtr SDLFont::CreateFontTexture() {
     if (!font) 
-        throw Exception("Font not loaded");
+        throw Exception("SDLFont: Font not loaded");
     SDLFontTexture* tex = new SDLFontTexture(SDLFontPtr(weak_this));
     SDLFontTexturePtr ptr(tex);
     tex->weak_this = ptr;
@@ -253,7 +261,7 @@ IFontTextureResourcePtr SDLFont::CreateFontTexture() {
  **/
 IFontTextureResourcePtr SDLFont::CreateFontTexture(int fixed_width, int fixed_height) {
     if (!font) 
-        throw Exception("Font not loaded");
+        throw Exception("SDLFont: Font not loaded");
     SDLFontTexture* tex = new SDLFontTexture(SDLFontPtr(weak_this), fixed_width, fixed_height);
     SDLFontTexturePtr ptr(tex);
     tex->weak_this = ptr;
@@ -267,7 +275,7 @@ IFontTextureResourcePtr SDLFont::CreateFontTexture(int fixed_width, int fixed_he
  * 
  * @param ptsize the point size of the SDLFont.
  **/
-void SDLFont::SetPointSize(int ptsize) {
+void SDLFont::SetSize(int ptsize) {
     this->ptsize = ptsize;
     if (font) {
         Unload();
@@ -280,7 +288,7 @@ void SDLFont::SetPointSize(int ptsize) {
  * 
  * @return the point size of the SDLFont.
  **/
-int SDLFont::GetPointSize() {
+int SDLFont::GetSize() {
     return ptsize;
 }
 
@@ -291,7 +299,7 @@ int SDLFont::GetPointSize() {
  * 
  * @param style the style of the SDLFont
  **/
-void SDLFont::SetFontStyle(int style) {
+void SDLFont::SetStyle(int style) {
     this->style = style;
     FireChangedEvent();
 }
@@ -301,7 +309,7 @@ void SDLFont::SetFontStyle(int style) {
  * 
  * @return the style of the SDLFont.
  **/
-int SDLFont::GetFontStyle() {
+int SDLFont::GetStyle() {
     return style;
 }
 
@@ -312,17 +320,13 @@ int SDLFont::GetFontStyle() {
  * 
  * @param colr the color of the SDLFont
  **/
-void SDLFont::SetFontColor(Vector<3,float> colr) {
+void SDLFont::SetColor(Vector<3,float> colr) {
     this->colr = colr;
-    // clamp to 1.0
-    this->colr[0] = fmin(1.0, this->colr[0]);
-    this->colr[1] = fmin(1.0, this->colr[1]);
-    this->colr[2] = fmin(1.0, this->colr[2]);
-
     // calculate integer rgb values
     sdlcolr.r = int(roundf(colr[0] * 255));
     sdlcolr.g = int(roundf(colr[1] * 255));
     sdlcolr.b = int(roundf(colr[2] * 255));
+    FireChangedEvent();
 }
 
 /**
@@ -330,7 +334,7 @@ void SDLFont::SetFontColor(Vector<3,float> colr) {
  * 
  * @return the color of the SDLFont.
  **/
-Vector<3,float> SDLFont::GetFontColor() {
+Vector<3,float> SDLFont::GetColor() {
     return colr;
 }
 
@@ -348,13 +352,13 @@ SDLFont::SDLFontTexture::SDLFontTexture(SDLFontPtr font, int fixed_width, int fi
     : font(font)
     , id(0)
     , data(NULL) 
+    , width(fixed_width)
+    , height(fixed_height)
+    , depth(32)
     , fixed_size(true)
 {
     font->ChangedEvent().Attach(*this);
-    depth = 32;
-    width = fixed_width;
-    height = fixed_height;
-    data = new unsigned char[4 * width * height];
+    data = new unsigned char[depth/8 * width * height];
 }
 
 SDLFont::SDLFontTexture::~SDLFontTexture() {
@@ -411,6 +415,15 @@ void SDLFont::SDLFontTexture::SetText(string text) {
 
 string SDLFont::SDLFontTexture::GetText() {
     return text;
+}
+
+void SDLFont::SDLFontTexture::SetBackground(Vector<4,float> color) {
+    bgcolr = color;
+    FireChangedEvent();
+}
+
+Vector<4,float> SDLFont::SDLFontTexture::GetBackground() {
+    return bgcolr;
 }
 
 void SDLFont::SDLFontTexture::FireChangedEvent() {

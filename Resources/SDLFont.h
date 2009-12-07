@@ -56,6 +56,7 @@ private:
         unsigned int depth;         //!< texture depth/bits
         string text;                //!< font text
         bool fixed_size;
+        Vector<4,float> bgcolr;
         boost::weak_ptr<SDLFontTexture> weak_this;
         void FireChangedEvent();
         friend class SDLFont;
@@ -78,6 +79,8 @@ private:
         //font texture resource methods
         void SetText(string text);
         string GetText();
+        void SetBackground(Vector<4,float> color);
+        Vector<4,float> GetBackground();
     };
 
     typedef boost::shared_ptr<SDLFontTexture> SDLFontTexturePtr;
@@ -115,12 +118,12 @@ public:
     IFontTextureResourcePtr CreateFontTexture();
     IFontTextureResourcePtr CreateFontTexture(int fixed_width, int fixed_height);
     void Render(SDLFontTexture* tex);
-    void SetPointSize(int ptsize);
-    int GetPointSize();
-    void SetFontStyle(int style);
-    int GetFontStyle();
-    void SetFontColor(Vector<3,float> colr);
-    Vector<3,float> GetFontColor();
+    void SetSize(int ptsize);
+    int GetSize();
+    void SetStyle(int style);
+    int GetStyle();
+    void SetColor(Vector<3,float> colr);
+    Vector<3,float> GetColor();
 
 };
 
