@@ -152,6 +152,11 @@ void SDLFont::Render(SDLFontTexture* tex) {
            tex->FireChangedEvent();
            return;
        }
+       else {
+           memset(tex->data, 0, tex->depth/8 * tex->width * tex->height);
+           tex->FireChangedEvent();
+           return; 
+       }
    }
 
    TTF_SetFontStyle(font, style);
@@ -185,12 +190,28 @@ void SDLFont::Render(SDLFontTexture* tex) {
        throw ResourceException("Error converting SDL_ttf surface");
    if (tex->fixed_size) {
        memset(tex->data, 0, tex->depth/8 * tex->width * tex->height);
-       unsigned int size = (tex->depth/8) * fmin(tex->width, surf->w) * fmin(tex->height, surf->h);
-       SDL_LockSurface(converted);
-       memcpy(tex->data, converted->pixels, size);
-       SDL_UnlockSurface(converted);
-       SDL_FreeSurface(converted);
-       SDL_FreeSurface(surf);
+       SDL_Rect srcrect, destrect;
+       srcrect.x = 0;
+       srcrect.y = 0;
+       srcrect.w = surf->w;
+       srcrect.h = surf->h;
+
+       destrect.x = 0;
+       destrect.y = 0;
+       destrect.w = tex->width;
+       destrect.h = tex->height;
+       SDL_Surface* dest = SDL_CreateRGBSurfaceFrom(tex->data, 
+                                                    tex->width, 
+                                                    tex->height, 
+                                                    tex->depth, 
+                                                    tex->depth/8 * tex->width, 
+                                                    format.Rmask, 
+                                                    format.Gmask, 
+                                                    format.Bmask, 
+                                                    format.Amask);
+       SDL_SetAlpha(converted, 0, 0);
+       if (SDL_BlitSurface(converted, &srcrect, dest, &destrect) != 0)
+       throw ResourceException("Error blitting surface.");
    }
    else {
        tex->width  = surf->w;
@@ -330,6 +351,7 @@ SDLFont::SDLFontTexture::SDLFontTexture(SDLFontPtr font, int fixed_width, int fi
     , fixed_size(true)
 {
     font->ChangedEvent().Attach(*this);
+    depth = 32;
     width = fixed_width;
     height = fixed_height;
     data = new unsigned char[4 * width * height];
