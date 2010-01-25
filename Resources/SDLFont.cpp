@@ -428,7 +428,7 @@ Vector<4,float> SDLFont::SDLFontTexture::GetBackground() {
 
 void SDLFont::SDLFontTexture::FireChangedEvent() {
     changedEvent.
-        Notify(TextureChangedEventArg(ITextureResourcePtr(weak_this)));
+        Notify(TextureChangedEventArg(this));
 }
 
 } //NS Resources
