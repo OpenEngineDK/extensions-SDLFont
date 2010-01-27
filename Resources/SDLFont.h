@@ -46,7 +46,7 @@ typedef boost::shared_ptr<SDLFont> SDLFontPtr;
  */
 class SDLFont : public IFontResource {
 private:
-    class SDLFontTexture : public IFontTextureResource, public Core::IListener<FontChangedEventArg> {
+    class SDLFontTexture : public IFontTextureResource /*, public Core::IListener<FontChangedEventArg>*/ {
     private:
         SDLFontPtr font;
         int id;                     //!< texture identifier
@@ -54,18 +54,15 @@ private:
         unsigned int width;         //!< texture width
         unsigned int height;        //!< texture height
         unsigned int depth;         //!< texture depth/bits
-        string text;                //!< font text
-        bool fixed_size;
-        Vector<4,float> bgcolr;
-        boost::weak_ptr<SDLFontTexture> weak_this;
-        void FireChangedEvent();
+        SDL_PixelFormat format;
+        SDL_Surface* surface;
+        inline void FireChangedEvent();
         friend class SDLFont;
     public:
-        SDLFontTexture(SDLFontPtr font);
-        SDLFontTexture(SDLFontPtr font, int fixed_width, int fixed_height);
+        SDLFontTexture(SDL_PixelFormat format,
+                       int fixed_width, int fixed_height);
         virtual ~SDLFontTexture();
         
-        void Handle(FontChangedEventArg arg);
         // texture resource methods
         void Load() {};
         void Unload() {};
@@ -76,11 +73,7 @@ private:
         unsigned int GetDepth();
         unsigned char* GetData();
         ColorFormat GetColorFormat();
-        //font texture resource methods
-        void SetText(string text);
-        string GetText();
-        void SetBackground(Vector<4,float> color);
-        Vector<4,float> GetBackground();
+        void Clear(Vector<4,float> color);
     };
 
     typedef boost::shared_ptr<SDLFontTexture> SDLFontTexturePtr;
@@ -90,13 +83,14 @@ private:
     int style;
     Vector<3,float> colr;
     SDL_Color sdlcolr;
-    boost::weak_ptr<SDLFont> weak_this;
+    SDL_PixelFormat format;
 
     friend class SDLFontPlugin;
 
-    void FireChangedEvent();
     SDLFont();
     SDLFont(string file);
+    inline void Init();
+    inline void FireChangedEvent();
 public:
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version) {
@@ -115,9 +109,9 @@ public:
     void Unload();
 
     // font resource methods
-    IFontTextureResourcePtr CreateFontTexture();
-    IFontTextureResourcePtr CreateFontTexture(int fixed_width, int fixed_height);
-    void Render(SDLFontTexture* tex);
+    IFontTextureResourcePtr CreateFontTexture(int width, int height);
+    void RenderText(string s, IFontTextureResourcePtr texr, int x, int y);
+    Vector<2,int> TextDim(string s);
     void SetSize(int ptsize);
     int GetSize();
     void SetStyle(int style);
