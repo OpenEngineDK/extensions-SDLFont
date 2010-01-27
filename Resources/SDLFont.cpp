@@ -167,6 +167,8 @@ void SDLFont::RenderText(string s, IFontTextureResourcePtr texr, int x, int y) {
     SDL_Rect rect = dest->clip_rect;
     rect.x = x;
     rect.y = y;
+    rect.w -= x;
+    rect.h -= y;
     SDL_Surface* converted = SDL_ConvertSurface(surf, &format, SDL_SWSURFACE);
     if (converted == NULL)
         throw ResourceException("SDLFont: Error converting SDL_ttf surface");
@@ -177,7 +179,7 @@ void SDLFont::RenderText(string s, IFontTextureResourcePtr texr, int x, int y) {
        throw ResourceException("SDLFont: Error blitting surface.");
    SDL_FreeSurface(converted);
    SDL_FreeSurface(surf);
-   tex->FireChangedEvent();
+   tex->FireChangedEvent(rect.x, rect.y, rect.w, rect.h);
 }
 
 Vector<2,int> SDLFont::TextDim(string s) {
@@ -357,9 +359,9 @@ void SDLFont::SDLFontTexture::Clear(Vector<4,float> color) {
 //     return bgcolr;
 // }
 
-void SDLFont::SDLFontTexture::FireChangedEvent() {
+void SDLFont::SDLFontTexture::FireChangedEvent(int x, int y, int w, int h) {
     changedEvent.
-        Notify(TextureChangedEventArg(this));
+        Notify(TextureChangedEventArg(this, x, y, w, h));
 }
 
 } //NS Resources

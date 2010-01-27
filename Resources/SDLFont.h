@@ -56,7 +56,7 @@ private:
         unsigned int depth;         //!< texture depth/bits
         SDL_PixelFormat format;
         SDL_Surface* surface;
-        inline void FireChangedEvent();
+        inline void FireChangedEvent(int x, int y, int w, int h);
         friend class SDLFont;
     public:
         SDLFontTexture(SDL_PixelFormat format,
