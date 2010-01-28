@@ -51,6 +51,7 @@ private:
         SDLFontPtr font;
         SDL_PixelFormat form;
         SDL_Surface* surface;
+        Vector<4,float> clearcol;
         boost::weak_ptr<SDLFontTexture> weak_this;
         inline void FireChangedEvent(int x, int y, int w, int h);
         friend class SDLFont;

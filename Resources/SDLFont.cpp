@@ -170,14 +170,14 @@ void SDLFont::RenderText(string s, IFontTextureResourcePtr texr, int x, int y) {
     if (converted == NULL)
         throw ResourceException("SDLFont: Error converting SDL_ttf surface");
    
-   // if (bgcolr[3] == 0.0f) 
-    //SDL_SetAlpha(converted, 0, 0);
-    //else SDL_SetAlpha(converted, SDL_SRCALPHA, 255);
-   if (SDL_BlitSurface(converted, &converted->clip_rect, dest, &rect) != 0)
-       throw ResourceException("SDLFont: Error blitting surface.");
-   SDL_FreeSurface(converted);
-   SDL_FreeSurface(surf);
-   tex->FireChangedEvent(0, 0, dest->clip_rect.w, fmin(y + converted->clip_rect.h, dest->clip_rect.h));
+    if (tex->clearcol[3] == 0.0f) 
+        SDL_SetAlpha(converted, 0, 0);
+    else SDL_SetAlpha(converted, SDL_SRCALPHA, 255);
+    if (SDL_BlitSurface(converted, &converted->clip_rect, dest, &rect) != 0)
+        throw ResourceException("SDLFont: Error blitting surface.");
+    SDL_FreeSurface(converted);
+    SDL_FreeSurface(surf);
+    tex->FireChangedEvent(0, 0, dest->clip_rect.w, fmin(y + converted->clip_rect.h, dest->clip_rect.h));
 }
 
 Vector<2,int> SDLFont::TextDim(string s) {
@@ -296,6 +296,7 @@ SDLFont::SDLFontTexture::~SDLFontTexture() {
 }
 
 void SDLFont::SDLFontTexture::Clear(Vector<4,float> color) {
+    clearcol = color;
     Uint8 r = int(roundf(color[0] * 255));
     Uint8 g = int(roundf(color[1] * 255));
     Uint8 b = int(roundf(color[2] * 255));
@@ -303,24 +304,6 @@ void SDLFont::SDLFontTexture::Clear(Vector<4,float> color) {
     Uint32 c = SDL_MapRGBA(&form, r, g, b, a);
     SDL_FillRect(surface, NULL, c);    
 }
-
-// void SDLFont::SDLFontTexture::SetText(string text) {
-//     this->text = text;
-//     font->Render(this);
-// }
-
-// string SDLFont::SDLFontTexture::GetText() {
-//     return text;
-// }
-
-// void SDLFont::SDLFontTexture::SetBackground(Vector<4,float> color) {
-//     bgcolr = color;
-//     FireChangedEvent();
-// }
-
-// Vector<4,float> SDLFont::SDLFontTexture::GetBackground() {
-//     return bgcolr;
-// }
 
 void SDLFont::SDLFontTexture::FireChangedEvent(int x, int y, int w, int h) {
     changedEvent.
