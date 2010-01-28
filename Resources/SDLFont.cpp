@@ -32,7 +32,7 @@ IFontResourcePtr SDLFontPlugin::CreateResource(string file) {
     // @todo we need to be sure that this does not lead to a circular
     // reference and memory leaks.
     SDLFontPtr ptr(new SDLFont(file));
-    // ptr->weak_this = ptr;
+    ptr->weak_this = ptr;
     return ptr;
 }
 
@@ -106,7 +106,7 @@ SDLFont::~SDLFont() {
  **/
 void SDLFont::FireChangedEvent() {
     changedEvent.
-        Notify(FontChangedEventArg(this));
+        Notify(FontChangedEventArg(IFontResourcePtr(weak_this)));
 }
 
 /**
@@ -157,9 +157,6 @@ void SDLFont::RenderText(string s, IFontTextureResourcePtr texr, int x, int y) {
     SDL_Surface* surf = TTF_RenderText_Blended(font, s.c_str(), sdlcolr);
     if (!surf) 
         throw ResourceException("SDLFont: Error rendering font");
-    tex->depth = surf->format->BitsPerPixel;
-    if (tex->depth != 32) 
-        throw ResourceException("SDLFont: Unsupported font surface depth.");
 
     // convert to rgba colors 
     //@todo conversion not needed when color is white. This is often
@@ -201,6 +198,7 @@ IFontTextureResourcePtr SDLFont::CreateFontTexture(int width, int height) {
         throw Exception("SDLFont: Font not loaded");
     SDLFontTexture* tex = new SDLFontTexture(format, width, height);
     SDLFontTexturePtr ptr(tex);
+    tex->weak_this = ptr;
     return ptr;
 }
 
@@ -276,18 +274,17 @@ Vector<3,float> SDLFont::GetColor() {
 // font texture implementation
 SDLFont::SDLFontTexture::SDLFontTexture(SDL_PixelFormat format,
                                         int width, int height)
-    : id(0)
-    , data(NULL) 
-    , width(width)
-    , height(height)
-    , depth(32)
-    , format(format)
+    : IFontTextureResource()
+    , form(format)
 {
     surface = SDL_CreateRGBSurface(SDL_SWSURFACE, width, height, 32, 
                                    format.Rmask, format.Gmask, 
                                    format.Bmask, format.Amask);
+    this->width = width;
+    this->height = height;
     data = (unsigned char*)surface->pixels;
-    channels = depth/8;
+    channels = 4;
+    this->format = RGBA;
 }
 
 SDLFont::SDLFontTexture::~SDLFontTexture() {
@@ -297,47 +294,12 @@ SDLFont::SDLFontTexture::~SDLFontTexture() {
     }
 }
 
-int SDLFont::SDLFontTexture::GetID() {
-    return id;
-}
-
-void SDLFont::SDLFontTexture::SetID(int id) {
-    this->id = id;
-}	
-
-unsigned int SDLFont::SDLFontTexture::GetWidth() {
-    return width;
-}
-
-unsigned int SDLFont::SDLFontTexture::GetHeight() {
-    return height;
-}
-
-unsigned int SDLFont::SDLFontTexture::GetDepth() {
-    return depth;
-}
-
-unsigned char* SDLFont::SDLFontTexture::GetData() {
-    return data;
-}
-
-ColorFormat SDLFont::SDLFontTexture::GetColorFormat() {
-    if (depth == 32)
-        return RGBA;
-    else if (depth == 24)
-        return RGB;
-    else if (depth == 8)
-        return LUMINANCE;
-    else
-        throw Exception("unknown color depth");
-}
-
 void SDLFont::SDLFontTexture::Clear(Vector<4,float> color) {
     Uint8 r = int(roundf(color[0] * 255));
     Uint8 g = int(roundf(color[1] * 255));
     Uint8 b = int(roundf(color[2] * 255));
     Uint8 a = int(roundf(color[3] * 255));
-    Uint32 c = SDL_MapRGBA(&format, r, g, b, a);
+    Uint32 c = SDL_MapRGBA(&form, r, g, b, a);
     SDL_FillRect(surface, NULL, c);    
 }
 
@@ -361,7 +323,7 @@ void SDLFont::SDLFontTexture::Clear(Vector<4,float> color) {
 
 void SDLFont::SDLFontTexture::FireChangedEvent(int x, int y, int w, int h) {
     changedEvent.
-        Notify(TextureChangedEventArg(this, x, y, w, h));
+        Notify(TextureChangedEventArg(ITextureResourcePtr(weak_this), x, y, w, h));
 }
 
 } //NS Resources

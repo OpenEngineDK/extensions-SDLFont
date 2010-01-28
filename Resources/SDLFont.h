@@ -49,13 +49,9 @@ private:
     class SDLFontTexture : public IFontTextureResource /*, public Core::IListener<FontChangedEventArg>*/ {
     private:
         SDLFontPtr font;
-        int id;                     //!< texture identifier
-        unsigned char* data;        //!< binary texture data
-        unsigned int width;         //!< texture width
-        unsigned int height;        //!< texture height
-        unsigned int depth;         //!< texture depth/bits
-        SDL_PixelFormat format;
+        SDL_PixelFormat form;
         SDL_Surface* surface;
+        boost::weak_ptr<SDLFontTexture> weak_this;
         inline void FireChangedEvent(int x, int y, int w, int h);
         friend class SDLFont;
     public:
@@ -66,13 +62,6 @@ private:
         // texture resource methods
         void Load() {};
         void Unload() {};
-        int GetID();
-        void SetID(int id);   
-        unsigned int GetWidth();
-        unsigned int GetHeight();
-        unsigned int GetDepth();
-        unsigned char* GetData();
-        ColorFormat GetColorFormat();
         void Clear(Vector<4,float> color);
     };
 
@@ -84,6 +73,7 @@ private:
     Vector<3,float> colr;
     SDL_Color sdlcolr;
     SDL_PixelFormat format;
+    boost::weak_ptr<SDLFont> weak_this;
 
     friend class SDLFontPlugin;
 
