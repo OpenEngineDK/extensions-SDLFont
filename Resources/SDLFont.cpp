@@ -170,13 +170,14 @@ void SDLFont::RenderText(string s, IFontTextureResourcePtr texr, int x, int y) {
     if (converted == NULL)
         throw ResourceException("SDLFont: Error converting SDL_ttf surface");
    
-   // if (bgcolr[3] == 0.0f) SDL_SetAlpha(converted, 0, 0);
-   // else SDL_SetAlpha(converted, SDL_SRCALPHA, 255);
+   // if (bgcolr[3] == 0.0f) 
+    SDL_SetAlpha(converted, 0, 0);
+    //else SDL_SetAlpha(converted, SDL_SRCALPHA, 255);
    if (SDL_BlitSurface(converted, &converted->clip_rect, dest, &rect) != 0)
        throw ResourceException("SDLFont: Error blitting surface.");
    SDL_FreeSurface(converted);
    SDL_FreeSurface(surf);
-   tex->FireChangedEvent(rect.x, rect.y, rect.w, rect.h);
+   tex->FireChangedEvent(rect.x, rect.y, converted->clip_rect.w, converted->clip_rect.h);
 }
 
 Vector<2,int> SDLFont::TextDim(string s) {
