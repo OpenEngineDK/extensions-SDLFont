@@ -20,12 +20,8 @@
 #include <Core/IListener.h>
 #include <Math/Vector.h>
 #include <string.h>
-
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/export.hpp>
-#include <boost/serialization/split_member.hpp>
-#include <boost/serialization/weak_ptr.hpp>
-#include <boost/serialization/extended_type_info.hpp>
+#include <boost/weak_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 
 //@todo make a SDL_ttf in Meta to suppot different platforms
 #include <SDL_ttf.h>
@@ -83,15 +79,6 @@ private:
     inline void Init();
     inline void FireChangedEvent();
 public:
-    template<class Archive>
-    void serialize(Archive& ar, const unsigned int version) {
-        ar & boost::serialization::base_object<IFontResource>(*this);
-        ar & filename;
-        ar & ptsize;
-        ar & style;
-        ar & colr;
-        ar & sdlcolr;
-    }
     
     ~SDLFont();
     
@@ -125,7 +112,5 @@ public:
 
 } //NS Resources
 } //NS OpenEngine
-
-BOOST_CLASS_EXPORT(OpenEngine::Resources::SDLFont)
 
 #endif // _SDL_FONT_H_
