@@ -13,7 +13,7 @@
 #ifndef _SDL_FONT_H_
 #define _SDL_FONT_H_
 
-#include <Resources/ITextureResource.h>
+#include <Resources/ITexture2D.h>
 #include <Resources/IFontResource.h>
 #include <Resources/IFontTextureResource.h>
 #include <Resources/IResourcePlugin.h>
