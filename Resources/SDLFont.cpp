@@ -177,6 +177,7 @@ void SDLFont::RenderText(string s, IFontTextureResourcePtr texr, int x, int y) {
         throw ResourceException("SDLFont: Error blitting surface.");
     SDL_FreeSurface(converted);
     SDL_FreeSurface(surf);
+    tex->ReverseVertecally();
     tex->FireChangedEvent(0, 0, dest->clip_rect.w, fmin(y + converted->clip_rect.h, dest->clip_rect.h));
 }
 
