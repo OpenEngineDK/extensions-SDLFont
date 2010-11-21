@@ -1,0 +1,6 @@
+# source
+darcs /extensions/SDLFont                http://openengine.dk/code/extensions/SDLFont
+darcs-dev /extensions/SDLFont                fh.daimi.au.dk:/users/cgd/code/extensions/SDLFont
+
+# windows lib
+win32 /libraries http://openengine.dk/data/libraries/sdlttf-win32.zip
